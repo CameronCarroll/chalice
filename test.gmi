@@ -1,0 +1,28 @@
+Hello.
+
+A random variable is a numerical measure of an outcome of a probability experiment, where the value is determined by chance.
+
+The sample mean x̄ is a random variable since the individuals that constitute that sample are randomly selected, so the sample mean is determined by chance and will have its own distribution (μ_x̄ and σ_x̄)
+
+The mean of a random variable is equal to its expected value.
+
+=> gemini://localhost/test.gmi
+
+```
+Any line whose first three characters are "```" (i.e. three consecutive back ticks with no leading whitespace) are preformatted toggle lines. These lines should NOT be included in the rendered output shown to the user. Instead, these lines toggle the parser between preformatted mode being "on" or "off". Preformatted mode should be "off" at the beginning of a document. The current status of preformatted mode is the only internal state a parser is required to maintain. When preformatted mode is "on", the usual rules for identifying line types are suspended, and all lines should be identified as preformatted text lines (see 5.4.4).
+```
+
+#one
+
+##two
+
+##three
+
+List
+* One
+* Two
+* Three
+
+> Hello
+
+-me

@@ -1,0 +1,7 @@
+# Chalice
+## A Gemini Server
+## Made of Crystal, by ieve
+
+Jan 19 2025:
+It does not yet work.
+It does the part where it reads a URI and can send a response, but it doesn't have the part where it actually looks up a file within a directory and serves it.
