@@ -8,17 +8,21 @@ require "openssl"
 
 CRLF = "\r\n"
 
-#request = "gemini://localhost/subfolder/subfolder2/document.gmi"
-request = "gemini://localhost/test.gmi"
-# request = "gemini://domain.net/subfolder/subfolder2/document.gmi"
-# request = "gemini://localhost"
-# request = "gemini://localhost/"
-# request = "gemini:/domain.net"
-# request = "http://foo.com/posts?id=30&limit=5#t\#{puts}ime=1305298413"
-# request = "gemini://ieve:hunter2@localhost"
-# request = "gemini://localhost/../../../etc/passwd"
-# request = "gemini://localhost/..\etc/passwd"
-# request = "gemini://localhost/./etc/passwd"
+#request2 = "gemini://localhost/subfolder/subfolder2/document.gmi"
+#request2 = "gemini://localhost/test.gmi"
+# request2 = "gemini://domain.net/subfolder/subfolder2/document.gmi"
+# request2 = "gemini://localhost"
+# request2 = "gemini://localhost/"
+# request2 = "gemini:/domain.net"
+# request2 = "http://foo.com/posts?id=30&limit=5#t\#{puts}ime=1305298413"
+# request2 = "gemini://ieve:hunter2@localhost"
+# request2 = "gemini://localhost/../../../etc/passwd"
+# request2 = "gemini://localhost/..\etc/passwd"
+# request2 = "gemini://localhost/./etc/passwd"
+#request2 = "geminingjsfngfios5408954gemini://"
+request2 = nil
+
+request = request2 || ARGF.gets_to_end
 
 TCPSocket.open("localhost", 1965) do |socket|
   context = OpenSSL::SSL::Context::Client.new

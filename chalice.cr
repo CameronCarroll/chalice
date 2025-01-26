@@ -5,6 +5,8 @@
 # -------------------------------------------
 # === User Configuration Stuff: ===
 HOSTNAME = "localhost"
+PORT = "1965"
+HOSTPORT = HOSTNAME + ":" + PORT
 SERVE_DIRECTORY = "/home/cameron/play/serve/"
 DEFAULT_FILE = "index.gmi"
 # -------------------------------------------
@@ -124,7 +126,8 @@ def decode_request(request)
   # Step 2 - Split and check hostname
   request_data["hostname"] = request.last.split("/", 2).first
   raise URIError.new("Bad URI (userinfo is not allowed)") if request_data["hostname"] =~ /@/
-  raise URIError.new("Bad URI (Hostname doesn't match server configuration)") unless request_data["hostname"] == HOSTNAME
+  # Allow checking against either hostname or HOSTNAME:PORT (HOSTPORT)
+  raise URIError.new("Bad URI (Hostname doesn't match server configuration)") unless request_data["hostname"] == HOSTNAME || request_data["hostname"] == HOSTPORT
 
 
   # Step 3 - Grab the request path

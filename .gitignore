@@ -1,2 +1,4 @@
 *.crt
 *.key
+chalice
+test_client
