@@ -8,10 +8,11 @@ require "openssl"
 
 CRLF = "\r\n"
 
-# request = "gemini://localhost/subfolder/subfolder2/document.gmi"
+#request = "gemini://localhost/subfolder/subfolder2/document.gmi"
+request = "gemini://localhost/test.gmi"
 # request = "gemini://domain.net/subfolder/subfolder2/document.gmi"
 # request = "gemini://localhost"
- request = "gemini://localhost/"
+# request = "gemini://localhost/"
 # request = "gemini:/domain.net"
 # request = "http://foo.com/posts?id=30&limit=5#t\#{puts}ime=1305298413"
 # request = "gemini://ieve:hunter2@localhost"

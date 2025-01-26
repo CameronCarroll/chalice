@@ -5,3 +5,18 @@
 Jan 19 2025:
 It does not yet work.
 It does the part where it reads a URI and can send a response, but it doesn't have the part where it actually looks up a file within a directory and serves it.
+
+# Gemini reference info
+https://geminiprotocol.net/docs/protocol-specification.gmi
+
+header is supposed to look like this:
+<STATUS><SPACE><META><CR><LF>
+
+| Code | Name | Description | Meta | Response Body |
+|------|------|-------------|------|--------------|
+| 10 | INPUT | Request user input | Prompt to user | None |
+| 20 | SUCCESS | Return data | MIME media type | Data |
+| 30 | REDIRECT | Redirect to another location | New URL (absolute/relative) | None |
+| 40 | TEMPORARY FAILURE | Temporary failure | Failure details | None |
+| 50 | PERMANENT FAILURE | Permanent failure | Failure details | None |
+| 60 | CLIENT CERTIFICATE REQUIRED | Client certificate needed | N/A | None |
