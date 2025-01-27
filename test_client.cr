@@ -9,7 +9,7 @@ require "openssl"
 CRLF = "\r\n"
 
 #request2 = "gemini://localhost/subfolder/subfolder2/document.gmi"
-#request2 = "gemini://localhost/test.gmi"
+request2 = "gemini://localhost/test.gmi"
 # request2 = "gemini://domain.net/subfolder/subfolder2/document.gmi"
 # request2 = "gemini://localhost"
 # request2 = "gemini://localhost/"
@@ -20,7 +20,7 @@ CRLF = "\r\n"
 # request2 = "gemini://localhost/..\etc/passwd"
 # request2 = "gemini://localhost/./etc/passwd"
 #request2 = "geminingjsfngfios5408954gemini://"
-request2 = nil
+#request2 = nil
 
 request = request2 || ARGF.gets_to_end
 

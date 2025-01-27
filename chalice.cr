@@ -8,7 +8,8 @@ HOSTNAME = "localhost"
 PORT = "1965"
 HOSTPORT = HOSTNAME + ":" + PORT
 SERVE_DIRECTORY = "/home/cameron/play/serve/"
-DEFAULT_FILE = "index.gmi"
+DEFAULT_FILE = "index.gmi" # served at root
+MAX_CONNECTIONS = 3
 # -------------------------------------------
 
 # -------------------------------------------
@@ -39,8 +40,20 @@ ssl_context.private_key = "server.key"
 ssl_server = OpenSSL::SSL::Server.new(tcp_server, ssl_context)
 puts "Listening on #{tcp_server.local_address}"
 
+conn_pool_channel = Channel(Symbol).new(MAX_CONNECTIONS)
+MAX_CONNECTIONS.times do
+  conn_pool_channel.send(:token)
+end
+
 while connection = ssl_server.accept?
-  spawn handle_connection(connection)
+  spawn do
+    begin
+      puts conn_pool_channel.receive
+      handle_connection(connection)
+    ensure
+      conn_pool_channel.send(:token)
+    end
+  end
 end
 
 ## ----------------------------------------------
@@ -67,7 +80,7 @@ def handle_connection(connection)
     response = handle_message(request)
     connection.puts response["header"]
     connection.puts response["body"] if response["body"]
-    puts "Sent response #{response["header"]} to #{connection}"
+    puts "Sent response to #{connection}"
   else
     raise ConnectionError.new("Request data is nil")
     return
@@ -90,6 +103,7 @@ def handle_message(message)
       status = file_data["error_code"]
       meta = file_data["error_message"]
     else
+      sleep 30.seconds
       status = "20"
       meta = "text/gemini"
       body = file_data["content"]
@@ -128,7 +142,6 @@ def decode_request(request)
   raise URIError.new("Bad URI (userinfo is not allowed)") if request_data["hostname"] =~ /@/
   # Allow checking against either hostname or HOSTNAME:PORT (HOSTPORT)
   raise URIError.new("Bad URI (Hostname doesn't match server configuration)") unless request_data["hostname"] == HOSTNAME || request_data["hostname"] == HOSTPORT
-
 
   # Step 3 - Grab the request path
   request_data["requested_path"] = request.last.split("/", 2).last
