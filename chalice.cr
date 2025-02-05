@@ -9,7 +9,7 @@ PORT = "1965"
 HOSTPORT = HOSTNAME + ":" + PORT
 SERVE_DIRECTORY = "/home/cameron/play/serve/"
 DEFAULT_FILE = "index.gmi" # served at root
-MAX_CONNECTIONS = 3
+MAX_CONNECTIONS = 50
 # -------------------------------------------
 
 # -------------------------------------------
@@ -40,19 +40,33 @@ ssl_context.private_key = "server.key"
 ssl_server = OpenSSL::SSL::Server.new(tcp_server, ssl_context)
 puts "Listening on #{tcp_server.local_address}"
 
+#
+# I think this is a 'semaphore' pattern kinda?
+# We fill up the pool with N tokens (which is literally just the symbol :token) for # of connections allowed.
+# When a new fiber is spawned, it pulls a token from the pool before dealing with the request, then ensure block returns the token on cleanup.
+# Bug - When you queue up more than N connections, the N+1th will be served, but everybody else in the queue gets a closed stream IO::Error
 conn_pool_channel = Channel(Symbol).new(MAX_CONNECTIONS)
 MAX_CONNECTIONS.times do
   conn_pool_channel.send(:token)
 end
 
-while connection = ssl_server.accept?
-  spawn do
-    begin
-      puts conn_pool_channel.receive
-      handle_connection(connection)
-    ensure
-      conn_pool_channel.send(:token)
-    end
+
+loop do
+  begin
+      while connection = ssl_server.accept?
+        spawn do
+          begin
+            conn_pool_channel.receive
+            handle_connection(connection)
+          ensure
+            conn_pool_channel.send(:token)
+          end
+        end
+      end
+  rescue e : OpenSSL::SSL::Error
+    puts ""
+    puts "--------- New Request #{Time.local.to_s}---------"
+    puts "[SSL Error] " + e.to_s
   end
 end
 
@@ -96,14 +110,14 @@ def handle_message(message)
   puts request_data.inspect
   if request_data["error_code"]?
     status = request_data["error_code"]
-    meta = request_data["error_message"]
+    meta = error_meta_message(status)
   else
     file_data = look_for_file(request_data["requested_path"])
     if file_data["error_code"]?
       status = file_data["error_code"]
-      meta = file_data["error_message"]
+      meta = error_meta_message(status)
     else
-      sleep 30.seconds
+      #sleep 10.seconds
       status = "20"
       meta = "text/gemini"
       body = file_data["content"]
@@ -123,7 +137,7 @@ def decode_request(request)
 
   raise URIError.new("Bad URI (contains fragment ('\#'))") if request.to_s =~ /\#/
 
-  raise URIError.new("Bad URI (relative directory references not allowed)") if request.to_s =~ /\/\.\./
+  raise URIError.new("Bad URI (relative directory references not allowed)") if request.to_s =~ /\/\.\./ || request.to_s =~ /\\\.\./
 
   # Step 1 - Split and check scheme
   # Incoming request looks something like this:
@@ -140,7 +154,7 @@ def decode_request(request)
   # Step 2 - Split and check hostname
   request_data["hostname"] = request.last.split("/", 2).first
   raise URIError.new("Bad URI (userinfo is not allowed)") if request_data["hostname"] =~ /@/
-  # Allow checking against either hostname or HOSTNAME:PORT (HOSTPORT)
+  # Check for either hostname or HOSTNAME:PORT (HOSTPORT)
   raise URIError.new("Bad URI (Hostname doesn't match server configuration)") unless request_data["hostname"] == HOSTNAME || request_data["hostname"] == HOSTPORT
 
   # Step 3 - Grab the request path
@@ -165,9 +179,41 @@ end
 
 # Takes a requested path (eg "subfolder/subfolder2/document.gmi") and returns the associated Gemini file if it's available in the SERVE_DIRECTORY
 def look_for_file(search_path : String)
-  content = File.read(SERVE_DIRECTORY + search_path)
+  search_path = search_path.gsub("\\", "/") # Normalize Windows paths to Unix style
+
+
+
+  # Secondary controls for path traversal...
+
+
+  # Check for symlinks
+  raise Path::Error.new("Path is a symlink, not allowed") if File.symlink?(SERVE_DIRECTORY + search_path)
+
+  # Checks that the requested path string starts with the intended serve directory.
+  full_path = File.realpath(File.join(SERVE_DIRECTORY, search_path))
+  serve_dir = File.realpath(SERVE_DIRECTORY)
+  raise Path::Error.new("Requested path '#{search_path}' resolved to '#{full_path}' which is outside of serve directory '#{serve_dir}'.") unless full_path.starts_with?(serve_dir)
+
+  path = Path[full_path] # Cast to Path type to use extension method
+
+  raise Path::Error.new("Requested an invalid extension '#{path.extension}'") unless path.extension.downcase == ".gmi" || path.extension.downcase == ".gemini"
+
+
+
+  content = File.read(path)
   return { "content" => content }
-rescue e : File::NotFoundError
+rescue e : File::NotFoundError | Path::Error
   # Return error code 51 -- not found
-  return { "error_message" => "Not found.", "error_code" => "51"}
+  return { "error_message" => e.to_s, "error_code" => "51"}
+end
+
+def error_meta_message(status_code : String)
+  case status_code
+  when "51"
+    meta = "I couldn't find what you requested..."
+  when "59"
+    meta = "Your request was not formatted in a way I was expecting..."
+  else
+    meta = "Need to write an error message still..."
+  end
 end
