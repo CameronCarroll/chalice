@@ -1,12 +1,14 @@
- # Chalice, a Gemini server
+# Chalice, a Gemini server
 # Made from Crystal by ieve
-# January 2025
+# Winter 2025
+
+VERSION = "1.0.0"
 
 # -------------------------------------------
 # === User Configuration Stuff: ===
 HOSTNAME = "localhost"
-PORT = "1965"
-HOSTPORT = HOSTNAME + ":" + PORT
+PORT = 1965
+HOSTPORT = HOSTNAME + ":" + PORT.to_s
 SERVE_DIRECTORY = "/home/cameron/play/serve/"
 DEFAULT_FILE = "index.gmi" # served at root
 MAX_CONNECTIONS = 50
@@ -21,6 +23,7 @@ MAX_CONNECTIONS = 50
 
 require "socket"
 require "openssl"
+require "log"
 
 CRLF = "\r\n"
 SPACE = " "
@@ -30,17 +33,22 @@ class Error < Exception; end
 class URIError < Error; end
 class ConnectionError < Error; end
 
-## ----------------------------------------------
-# Main Loop:
+backend = Log::IOBackend.new(File.new("chalice.log", "a+"))
+Log.setup do |c|
+  c.bind "*", :info, backend
+end
 
-tcp_server = TCPServer.new("localhost", 1965)
+# Server setup
+tcp_server = TCPServer.new(HOSTNAME, PORT)
 ssl_context = OpenSSL::SSL::Context::Server.new
 ssl_context.certificate_chain = "server.crt"
 ssl_context.private_key = "server.key"
 ssl_server = OpenSSL::SSL::Server.new(tcp_server, ssl_context)
+puts "Chalice Gemini Server - Version #{VERSION}"
 puts "Listening on #{tcp_server.local_address}"
+Log.info { "Server startup at #{Time.local.to_s}, listening on #{tcp_server.local_address}" }
 
-#
+# Max connections / rate limiting
 # I think this is a 'semaphore' pattern kinda?
 # We fill up the pool with N tokens (which is literally just the symbol :token) for # of connections allowed.
 # When a new fiber is spawned, it pulls a token from the pool before dealing with the request, then ensure block returns the token on cleanup.
@@ -50,6 +58,8 @@ MAX_CONNECTIONS.times do
   conn_pool_channel.send(:token)
 end
 
+## ----------------------------------------------
+# Main Loop:
 
 loop do
   begin
@@ -64,9 +74,8 @@ loop do
         end
       end
   rescue e : OpenSSL::SSL::Error
-    puts ""
-    puts "--------- New Request #{Time.local.to_s}---------"
-    puts "[SSL Error] " + e.to_s
+    Log.info { "--------- New Request #{Time.local.to_s} ---------" }
+    Log.error { "[SSL Error] " + e.to_s }
   end
 end
 
@@ -84,17 +93,15 @@ end
 # response header is supposed to look like this:
 # <STATUS><SPACE><META><CR><LF>
 def handle_connection(connection)
-
   request = connection.gets
   if request
-    puts ""
-    puts "--------- New Request #{Time.local.to_s}---------"
-    puts "Received message #{request} from #{connection}"
+    Log.info { "--------- New Request #{Time.local.to_s} ---------" }
+    Log.info { "Received message #{request} from #{connection.remote_address.to_s}" }
 
     response = handle_message(request)
     connection.puts response["header"]
+    Log.info { "Sent response #{response["header"]} to #{connection.remote_address.to_s}" }
     connection.puts response["body"] if response["body"]
-    puts "Sent response to #{connection}"
   else
     raise ConnectionError.new("Request data is nil")
     return
@@ -107,7 +114,6 @@ end
 
 def handle_message(message)
   request_data = decode_request(message)
-  puts request_data.inspect
   if request_data["error_code"]?
     status = request_data["error_code"]
     meta = error_meta_message(status)
@@ -117,7 +123,6 @@ def handle_message(message)
       status = file_data["error_code"]
       meta = error_meta_message(status)
     else
-      #sleep 10.seconds
       status = "20"
       meta = "text/gemini"
       body = file_data["content"]
