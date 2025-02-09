@@ -1,11 +1,15 @@
 name: chalice
-version: v0.1.0
+version: v1.0.0
 
 authors:
  - ieve <ievemail@proton.me>
 
 description: |
  Gemini protocol (gopherlike not-web) server
+
+targets:
+  chalice:
+    main: src/chalice.cr
 
 # dependencies:
 #   pg:

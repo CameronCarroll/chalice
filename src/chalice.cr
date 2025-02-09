@@ -9,9 +9,10 @@ VERSION = "1.0.0"
 HOSTNAME = "localhost"
 PORT = 1965
 HOSTPORT = HOSTNAME + ":" + PORT.to_s
-SERVE_DIRECTORY = "/home/cameron/play/serve/"
+SERVE_DIRECTORY = "/srv/gemini"
 DEFAULT_FILE = "index.gmi" # served at root
 MAX_CONNECTIONS = 50
+LOG_LOCATION = "/var/log/gemini"
 # -------------------------------------------
 
 # -------------------------------------------
@@ -73,9 +74,9 @@ loop do
           end
         end
       end
-  rescue e : OpenSSL::SSL::Error
+  rescue e : OpenSSL::SSL::Error | IO::Error
     Log.info { "--------- New Request #{Time.local.to_s} ---------" }
-    Log.error { "[SSL Error] " + e.to_s }
+    Log.error { "[SSL/IO Error] " + e.to_s }
   end
 end
 

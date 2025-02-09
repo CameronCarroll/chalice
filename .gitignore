@@ -1,4 +1,5 @@
 *.crt
 *.key
+*.log
 chalice
 test_client
