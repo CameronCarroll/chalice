@@ -11,7 +11,8 @@ PORT = 1965                     # int32, not a string please
 SERVE_DIRECTORY = "/srv/gemini" # /srv/{protocol} is canon I think?
 DEFAULT_FILE = "index.gmi"      # filename to be served at domain root
 MAX_CONNECTIONS = 50
-LOG_LOCATION = "/var/log/gemini"
+LOG_LOCATION = "/var/log/chalice"
+CERT_LOCATION = "/etc/chalice"
 # -------------------------------------------
 
 # -------------------------------------------
@@ -29,15 +30,17 @@ CRLF = "\r\n"
 SPACE = " "
 GEMINI_SCHEME_NAME = "gemini"
 HOSTPORT = HOSTNAME + ":" + PORT.to_s
-LOGFILE = LOG_LOCATION + "/chalice.log"
+LOG_FILE = LOG_LOCATION + "/chalice.log"
+CERT_FILE = CERT_LOCATION + "/server.crt"
+PRIVATE_KEY = CERT_LOCATION + "/server.key"
 
 class Error < Exception; end
 class URIError < Error; end
 class ConnectionError < Error; end
 
-backend = Log::IOBackend.new(File.new(LOGFILE, "a+"))
+backend = Log::IOBackend.new(File.new(LOG_FILE, "a+"))
 Log.setup do |c|
-  c.bind "*", :info, backend # Log info and above to logfile IO
+  c.bind "*", :info, backend # Log info and above to LOG_FILE IO
   # Reminder that specifying sources doesn't seem to work at the top level namespace. I think we need to wrap everything in a module to get a namespace if we want to do anything with sources.
 end
 
