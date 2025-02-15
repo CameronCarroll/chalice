@@ -92,6 +92,8 @@ openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 
 ```
 sudo chmod 400 /etc/chalice/server.key
 sudo chmod 444 /etc/chalice/server.crt
+sudo chown chalice:chalice /etc/chalice/server.crt
+sudo chown chalice:chalice /etc/chalice/server.key
 ```
 (Only server user can read key. Everybody can read the cert.)
 
