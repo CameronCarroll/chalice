@@ -15,7 +15,7 @@ Made from Crystal, by ieve in Winter of 2025
 # Development usage
 * Generate key and cert
 ```
-openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}
+openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}
 ```
 * Compile and run with debugger enabled
 ```
@@ -82,11 +82,9 @@ sudo chmod 750 /var/log/chalice
 ```
 sudo mkdir /etc/chalice
 cd /etc/chalice
-openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
+openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
 ```
 * Replace hostname in the above command with eg "example.com" or "localhost"
-* Openssl will ask for a password to use to encrypt the private key. We'll use systemd credentials to provide this key to application in production later on in the installation.
-
 
 5. Set permissions on key/cert
 ```
@@ -130,24 +128,10 @@ ExecStart=/usr/local/bin/chalice
 Restart=on-failure
 User=chalice
 Group=chalice
-LoadCredential=chalicekey:/etc/chalice/key.txt
-Environment=CHALICEKEYPATH=%d/chalicekey
-PrivateMounts=yes
 
 [Install]
 WantedBy=multi-user.target
 ```
-* 'LoadCredential' puts the wrapping key (set up in next step) into a memory location, and 'Environment' makes it available to the service code as an environment variable $CHALICEKEYPATH
-* PrivateMounts makes it so that only the service user can see the memory location where wrapping key is held.
-
-8. Set up wrapping key used to decrypt service key
-```
-echo "{password}" | sudo tee /etc/chalice/key.txt
-sudo chmod 600 /etc/chalice/key.txt
-sudo chown root:root /etc/chalice/key.txt
-```
-* Replace {password} with the same password you used to encrypt the server's private key.
-* Set up file permissions so that only owner can read/write key file, and set owner as root.
 
 8. Enable and start service
 ```

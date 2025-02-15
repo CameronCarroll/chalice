@@ -4,8 +4,6 @@
 
 VERSION = "1.0.0"
 
-
-
 # -------------------------------------------
 # === User Configuration Stuff: ===
 HOSTNAME = "localhost"          # "example.com" or "localhost"
@@ -21,8 +19,7 @@ MAX_CONNECTIONS = 50
 # === Test settings: ===
 LOG_LOCATION = "."
 CERT_LOCATION = "."
-TESTING = true
-
+TESTING = false
 
 # -------------------------------------------
 # === How to generate server certificate using openssl: ===
@@ -46,7 +43,6 @@ PRIVATE_KEY = CERT_LOCATION + "/server.key"
 class Error < Exception; end
 class URIError < Error; end
 class ConnectionError < Error; end
-class CryptographyError < Error; end
 
 # Set up logging backend...
 backend = Log::IOBackend.new(File.new(LOG_FILE, "a+"))
@@ -55,72 +51,10 @@ Log.setup do |c|
   # Reminder that specifying sources doesn't seem to work at the top level namespace. I think we need to wrap everything in a module to get a namespace if we want to do anything with sources.
 end
 
-# Bindings for OpenSSL password callback, used to automatically enter the wrapper key for decrypting our certificate private key
-# https://docs.openssl.org/master/man3/SSL_CTX_set_default_passwd_cb
-alias PasswdCb = (LibC::Char*, Int32, Int32, Void*) -> Int32
-
-lib LibSSL
-  # In the OpenSSL signature, it wants type of callback to match this signature:
-  # (char *buf, int size, int rwflag, void *u)
-
-  type SSL_CTX = Void*
-  fun SSL_CTX_set_default_passwd_cb(ctx : SSL_CTX, cb : PasswdCb) : Void
-  fun SSL_CTX_set_default_passwd_cb_userdata(ctx : SSL_CTX, u : Void*) : Void
-  fun SSL_CTX_get_default_passwd_cb(ctx : SSL_CTX) : PasswdCb
-end
-
 # Server setup
 tcp_server = TCPServer.new(HOSTNAME, PORT)
 ssl_context = OpenSSL::SSL::Context::Server.new
 ssl_context.certificate_chain = CERT_FILE
-
-
-
-# Callback function for LibSSL wrapper password.
-# Note that rwflag is not used (we only decrypt/read)
-# We need to put our password into a C character buffer data format (at the other end of 'buffer' pointer) and return the number of bytes written.
-passwd_cb = Proc(LibC::Char*, LibC::Int, LibC::Int, Void*, LibC::Int).new do |buffer, size, _rwflag, userdata|
-  # userdata signature on C side is Void* so need to explicitly cast it to build a string
-  puts "hit callback"
-  pw = String.new(userdata.as(UInt8*))
-  if pw.empty?
-    next 0
-  end
-  password_length = pw.bytesize.clamp(0, size - 1)
-  # i guess we're truncating to whatever size OpenSSL tells us?
-  # to_unsafe gives a pointer to the bytes of the string
-  buffer.copy_from(pw.to_unsafe, password_length)
-  next password_length
-end
-
-# CHALICEKEYPATH environment variable is set up by systemd - see README.md production installation instructions.
-if TESTING
-  password = File.read("./key.txt")
-else
-  password = File.read(ENV["CHALICEKEYPATH"]).chomp
-end
-
-puts "ssl context stuff 1"
-puts ssl_context.to_unsafe
-puts "ssl context stuff 2"
-puts ssl_context.as(LibSSL::SSL_CTX).value
-puts "-----------------"
-# Set up the password callback function in our context:
-LibSSL.SSL_CTX_set_default_passwd_cb(ssl_context.as(LibSSL::SSL_CTX), passwd_cb)
-# Give our OpenSSL context a pointer to the userdata (which is the password we just read)
-puts "testing password stuff"
-p = password.to_unsafe.as(Void*)
-LibSSL.SSL_CTX_set_default_passwd_cb_userdata(ssl_context.as(LibSSL::SSL_CTX), password.to_unsafe.as(Void*))
-# Hopefully gobble the password up real quick before anyone steals it!!!
-#password = nil
-#GC.collect
-puts "Tryina print this thing..."
-puts LibSSL.SSL_CTX_get_default_passwd_cb(ssl_context.as(LibSSL::SSL_CTX))
-
-puts "ssl_context to_unsafe: #{ssl_context.to_unsafe}"
-puts "ssl_context casted to SSL_CTX: #{ssl_context.as(LibSSL::SSL_CTX)}"
-puts "Stored callback in OpenSSL: #{LibSSL.SSL_CTX_get_default_passwd_cb(ssl_context.as(LibSSL::SSL_CTX))}"
-
 ssl_context.private_key = PRIVATE_KEY
 ssl_server = OpenSSL::SSL::Server.new(tcp_server, ssl_context)
 puts "Chalice Gemini Server - Version #{VERSION}"
