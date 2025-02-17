@@ -11,15 +11,15 @@ PORT = 1965                     # int32, not a string please
 SERVE_DIRECTORY = "/srv/gemini" # /srv/{protocol} is canon I think?
 DEFAULT_FILE = "index.gmi"      # filename to be served at domain root
 MAX_CONNECTIONS = 50
-#LOG_LOCATION = "/var/log/chalice"
-#CERT_LOCATION = "/etc/chalice"
+LOG_LOCATION = "/var/log/chalice"
+CERT_LOCATION = "/etc/chalice"
 # -------------------------------------------
 
 # -------------------------------------------
 # === Test settings: ===
-LOG_LOCATION = "."
-CERT_LOCATION = "."
-TESTING = false
+#LOG_LOCATION = "."
+#CERT_LOCATION = "."
+#TESTING = true
 
 # -------------------------------------------
 # === How to generate server certificate using openssl: ===

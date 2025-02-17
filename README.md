@@ -15,7 +15,7 @@ Made from Crystal, by ieve in Winter of 2025
 # Development usage
 * Generate key and cert
 ```
-openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}
+openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
 ```
 * Compile and run with debugger enabled
 ```
@@ -82,7 +82,7 @@ sudo chmod 750 /var/log/chalice
 ```
 sudo mkdir /etc/chalice
 cd /etc/chalice
-openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
+sudo openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
 ```
 * Replace hostname in the above command with eg "example.com" or "localhost"
 
