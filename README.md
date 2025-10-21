@@ -69,32 +69,36 @@ sudo cp ./bin/chalice /usr/local/bin/chalice
 ```
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin chalice
 ```
-Note - You are making this guy homeless. js
 
-2. Set up serve directory
+2. Add the user that you use to administer the server to the chalice group to allow copying files to the server directory and viewing log file
+```
+sudo usermod -aG chalice {your_username}
+```
+
+3. Set up serve directory
 ```
 sudo mkdir -p /srv/gemini
 sudo chown chalice:chalice /srv/gemini
-sudo chmod 750 /srv/gemini
+sudo chmod 770 /srv/gemini
 ```
-(Chalice user can do everything, chalice group can read, everybody else is NOT allowed.)
+(Chalice user and group can read, write and enter the directory, but other users have no rights)
 
-3. Set up log folder
+4. Set up log folder
 ```
 sudo mkdir -p /var/log/chalice
 sudo chown chalice:chalice /var/log/chalice
 sudo chmod 750 /var/log/chalice
 ```
-(Chalice user can do everything, chalice group can read, everybody else can heck off)
+(Chalice user can read/write/enter, and group can read/enter, but other users have no rights)
 
 4. Create TLS key and cert
 ```
 sudo mkdir /etc/chalice
 cd /etc/chalice
-openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
+sudo openssl req -x509 -nodes -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}"
 ```
 * Replace hostname in the above command with eg "example.com" or "localhost"
-* Openssl will ask for a password to use to encrypt the private key. We'll use systemd credentials to provide this key to application in production later on in the installation.
+* Using no DES approach so that server can restart without hanging, never got the wrapper key thing to work, so guard the key carefully...
 
 
 5. Set permissions on key/cert
@@ -137,30 +141,43 @@ ExecStart=/usr/local/bin/chalice
 Restart=on-failure
 User=chalice
 Group=chalice
-LoadCredential=chalicekey:/etc/chalice/key.txt
-Environment=CHALICEKEYPATH=%d/chalicekey
-PrivateMounts=yes
 
 [Install]
 WantedBy=multi-user.target
 ```
-* 'LoadCredential' puts the wrapping key (set up in next step) into a memory location, and 'Environment' makes it available to the service code as an environment variable $CHALICEKEYPATH
-* PrivateMounts makes it so that only the service user can see the memory location where wrapping key is held.
-
-8. Set up wrapping key used to decrypt service key
-```
-echo "{password}" | sudo tee /etc/chalice/key.txt
-sudo chmod 600 /etc/chalice/key.txt
-sudo chown root:root /etc/chalice/key.txt
-```
-* Replace {password} with the same password you used to encrypt the server's private key.
-* Set up file permissions so that only owner can read/write key file, and set owner as root.
 
 8. Enable and start service
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable chalice.service
 sudo systemctl start chalice.service
+```
+
+## Installing updates
+1. Download new version from github
+```
+git clone git@github.com:CameronCarroll/chalice.git
+```
+
+2. Build new binary, reset hostname and any other config settings you customized from the default
+```
+# === User Configuration Stuff: ===
+HOSTNAME = "localhost"          # "example.com" or "localhost"
+PORT = 1965                     # int32, not a string please
+SERVE_DIRECTORY = "/srv/gemini" # /srv/{protocol} is canon I think?
+DEFAULT_FILE = "index.gmi"      # filename to be served at domain root
+MAX_CONNECTIONS = 50
+LOG_LOCATION = "/var/log/chalice"
+```
+
+3. Replace old binary
+```
+sudo cp ./bin/chalice /usr/local/bin/chalice
+```
+
+4. Restart server with systemd
+```
+sudo systemctl restart chalice.service
 ```
 
 # Gemini reference info
