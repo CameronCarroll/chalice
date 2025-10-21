@@ -159,7 +159,7 @@ sudo systemctl start chalice.service
 git clone git@github.com:CameronCarroll/chalice.git
 ```
 
-2. Build new binary, reset hostname and any other config settings you customized from the default
+2. Reset hostname and any other config settings you customized from the default, then build binary
 ```
 # === User Configuration Stuff: ===
 HOSTNAME = "localhost"          # "example.com" or "localhost"
@@ -170,14 +170,22 @@ MAX_CONNECTIONS = 50
 LOG_LOCATION = "/var/log/chalice"
 ```
 
-3. Replace old binary
+-->
+
 ```
+shards build
+```
+
+3. Stop server, replace old binary
+```
+sudo systemctl stop chalice.service
 sudo cp ./bin/chalice /usr/local/bin/chalice
 ```
 
-4. Restart server with systemd
+4. Start server again with systemd and check that it is running
 ```
-sudo systemctl restart chalice.service
+sudo systemctl start chalice.service
+sudo systemctl status chalice.service
 ```
 
 # Gemini reference info
