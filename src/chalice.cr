@@ -1,8 +1,11 @@
 # Chalice, a Gemini server
-# Made from Crystal by ieve
-# Winter 2025
+# Made out of Crystal by ieve
+# Written Winter 2025
+# Updated Fall 2025
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+
+DEVELOP_MODE = false
 
 # -------------------------------------------
 # === User Configuration Stuff: ===
@@ -30,25 +33,32 @@ CRLF = "\r\n"
 SPACE = " "
 GEMINI_SCHEME_NAME = "gemini"
 HOSTPORT = HOSTNAME + ":" + PORT.to_s
-LOG_FILE = LOG_LOCATION + "/chalice.log"
-CERT_FILE = CERT_LOCATION + "/server.crt"
-PRIVATE_KEY = CERT_LOCATION + "/server.key"
+
+if DEVELOP_MODE
+  log_file = "chalice.log"
+  cert_file = "server.crt"
+  key_file = "server.key"
+else
+  log_file = LOG_LOCATION + "/chalice.log"
+  cert_file = CERT_LOCATION + "/server.crt"
+  key_file = CERT_LOCATION + "/server.key"
+end
 
 class Error < Exception; end
 class URIError < Error; end
 class ConnectionError < Error; end
 
-backend = Log::IOBackend.new(File.new(LOG_FILE, "a+"))
+backend = Log::IOBackend.new(File.new(log_file, "a+"))
 Log.setup do |c|
-  c.bind "*", :info, backend # Log info and above to LOG_FILE IO
+  c.bind "*", :info, backend # Log info and above to log_file IO
   # Reminder that specifying sources doesn't seem to work at the top level namespace. I think we need to wrap everything in a module to get a namespace if we want to do anything with sources.
 end
 
 # Server setup
 tcp_server = TCPServer.new(HOSTNAME, PORT)
 ssl_context = OpenSSL::SSL::Context::Server.new
-ssl_context.certificate_chain = "server.crt"
-ssl_context.private_key = "server.key"
+ssl_context.certificate_chain = cert_file
+ssl_context.private_key = key_file
 ssl_server = OpenSSL::SSL::Server.new(tcp_server, ssl_context)
 puts "Chalice Gemini Server - Version #{VERSION}"
 puts "Listening on #{tcp_server.local_address}"
@@ -130,7 +140,16 @@ def handle_message(message)
       meta = error_meta_message(status)
     else
       status = "20"
-      meta = "text/gemini"
+      if file_data["type"] == "gemtext"
+        meta = "text/gemini"
+      elsif file_data["type"] == "image"
+        meta = "image/png"
+      else
+        status = "40" # Server error status
+        meta = error_meta_message(status)
+        header = status + SPACE + meta + CRLF
+        return {"header" => header, "body" => ""}
+      end
       body = file_data["content"]
     end
   end
@@ -206,13 +225,21 @@ def look_for_file(search_path : String)
   raise Path::Error.new("Requested path '#{search_path}' resolved to '#{full_path}' which is outside of serve directory '#{serve_dir}'.") unless full_path.starts_with?(serve_dir)
 
   path = Path[full_path] # Cast to Path type to use extension method
+  extension = path.extension.downcase
 
-  raise Path::Error.new("Requested an invalid extension '#{path.extension}'") unless path.extension.downcase == ".gmi" || path.extension.downcase == ".gemini"
+  raise Path::Error.new("Requested an invalid extension '#{path.extension}'") unless path.extension.downcase == ".gmi" || path.extension.downcase == ".gemini" || path.extension.downcase == ".png"
 
-
+ if extension == ".gmi" || extension == ".gemini"
+    type = "gemtext"
+  elsif extension == ".png"
+    type = "image"
+  else
+    raise Path::Error.new("Invalid extension")
+  end
 
   content = File.read(path)
-  return { "content" => content }
+
+  return { "content" => content, "type" => type }
 rescue e : File::NotFoundError | Path::Error
   # Return error code 51 -- not found
   return { "error_message" => e.to_s, "error_code" => "51"}

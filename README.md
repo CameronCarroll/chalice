@@ -9,10 +9,19 @@ Made from Crystal, by ieve in Winter of 2025
 
 # Development target / assumptions
 * Developed / tested on...
-  - Crystal 1.15.1 (2025-02-08) / LLVM: 19.1.7 / x86_64-pc-linux-gnu
+  - Crystal 1.17.1 (2025-02-08) / LLVM: 20.1.8 / x86_64-pc-linux-gnu
 * Installation instructions assume you're running a Linux w/ systemd
 
+# Changelog
+* 1.1.0 : Add support for serving image files (png only), added DEVELOP_MODE flag that points cert, key and log location to current local folder, and updated production cert and key location to intended folders described in README.
+* 1.0.0 : Initial release
+
 # Development usage
+* Create log directory
+```
+sudo mkdir /var/log/chalice
+sudo chown user:user /var/log/chalice
+```
 * Generate key and cert
 ```
 openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -subj "/CN={hostname}
